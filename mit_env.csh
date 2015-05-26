@@ -37,8 +37,8 @@ endif
      source /exlibris/aleph/a20_1/alephm/.cshrc
      breaksw
    case 22:
-     setenv MIT_SCRIPT_BASE /home/barton/v22
-     source /exlibris/aleph/a22_1/alephm/.cshrc
+     setenv MIT_SCRIPT_BASE /exlibris/aleph/luigi/aleph_mail
+     source /exlibris/aleph/a22_2/alephm/.cshrc
      breaksw
    default:
      echo "Unknown version: $MIT_ALEPH_VERSION"

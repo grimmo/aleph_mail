@@ -28,20 +28,21 @@
 # the client-mailer, which is less reliable.
 
 # History
+# 080415 (luigi) Modifiche per Bicocca
 # 060811 (orbitee) Updating for version 18
 # 07-08-2010 (orbitee) Adjusting syntax for calling Perl script
 
 #################
 
 # Setup environment and connect to mit50 
-source /home/barton/mit_opts.csh
+source mit_opts.csh
 if ( $status != 0 ) then
     exit 1
 endif
 
-dlib mit50
+dlib bin50
 
-$MIT_SCRIPT_BASE/mail/process_mail.pl --config=$MIT_SCRIPT_BASE/mail/debug.config
+$MIT_SCRIPT_BASE/process_mail.pl --config=$MIT_SCRIPT_BASE/debug.config
 #$MIT_SCRIPT_BASE/mail/process_mail.pl --config=$MIT_SCRIPT_BASE/mail/circ_email.config
 #$MIT_SCRIPT_BASE/mail/process_mail.pl --config=$MIT_SCRIPT_BASE/mail/circ_wait.config
 #$MIT_SCRIPT_BASE/mail/process_mail.pl --config=$MIT_SCRIPT_BASE/mail/mono_email.config

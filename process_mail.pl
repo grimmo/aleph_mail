@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+#/exlibris/aleph/a22_2/product/bin/perl
 
 
 #############  The MIT License #############################################
@@ -42,14 +43,20 @@
 # 7  Jul 2010 by Christine Moulen - Delete empty err logs.
 # 8  Jul 2010 by Christine Moulen - Major rewrite, moving most vars
 #        out to a config file.
-# 15 May 1014 by Christine Moulen - Incorporating some changes from Hans 
+# 15 May 2014 by Christine Moulen - Incorporating some changes from Hans 
 #        Breitenlohner @ University of Maryland.  
 #        - use of <form-format> to select templates
 #        - modified parsing of filenames to handle multiple periods
 #        - ability to send a Cc: based on a configuration value.
+# 26 May 2015 by Luigi Messina - Using Email::Date::Format to correctly format $maildate
+#                              - Support for two email addresses separated by ; 
+#                                in Aleph email address field
+#			       - admin report translated in italian
 
 use MIME::Lite;            # send email
 use Email::Valid;          # validate email address format
+use lib "Email-Date-Format-1.005/lib/";
+use Email::Date::Format qw(email_date);
 use XML::LibXSLT;          # XSLT Tranformation Functions
 use XML::LibXML;           # XML parsering functions
 use English;               # convert some symbolic Perl vars to english
@@ -125,6 +132,7 @@ if(defined $debug_file){
 $mon++;
 $year+=1900;
 $maildate = join ' ', $temp[0].',', $temp[2], $temp[1], $temp[5], $temp[3], $temp[4];
+$maildate = email_date;
 # Format like 20050524-134350
 $timestamp= sprintf("%04d%02d%02d-%02d%02d%02d",$year,$mon,$mday,$hour,$min,$sec);
 $stats_file = "$log_dir\/$ext_stats-$year-$mon";
@@ -262,7 +270,11 @@ sub process_stream {
 	    $to_address = $root->findvalue('email-address');
 	}
         $subject_line = $root->findvalue('subject');
-	if(defined($to_address) && Email::Valid->address($to_address)){
+	# Bicocca ha 2 indirizzi nel campo email separati da ;
+	# spediamo la mail ad entrambi?
+	my @indirizzi= split(';', $to_address);
+	foreach $to_address (@indirizzi) {
+	 if(defined($to_address) && Email::Valid->address($to_address)){
            my $style_doc = $parser->parse_file($plain_xslt);
            my $stylesheet = $xslt->parse_stylesheet($style_doc);
            my $results = $stylesheet->transform($source);
@@ -287,9 +299,10 @@ sub process_stream {
            $html_body .= "</BODY></HTML>\n";
            &send_message;
 	 } else {
-		print "No Email Address\n";
+		print "No Email Address or invalid email address: $to_address\n";
 		&print_log;
          }
+        }
 }
 
 # Append to stats and send report.
@@ -299,18 +312,27 @@ sub append_stats{
 
    if ($admin_address ne "NONE") {
    # Email File Stats to Administrators
-       $email_body = "This message is to inform you that batch emails from Aleph have been sent.\n\n".
-	   "If you are monitoring circulation emails, you should see this message every morning for courtesy, overdue, and lost notices.  Recall letters are sent 3 times each day, but sometimes there are no recalls.\n\n".
-	   "If you are monitoring acquisitions emails, you should see this message Monday through Friday mornings only.\n\n".
-	   "Contact Christine if you ever do not receive this message on schedule, as there could be a problem.\n\n".
-	   "Processed file: $myfile\n\n".
-	   "Sent $to_email_file email message(s)\n\n".
-	   "Sent $to_print_file messages to printout file\n\n".
-	   "Sent $to_drop_file messages to retry file\n\n";
+       $email_body = "Gentile collega,\nle mail dei solleciti/avvisi Aleph sono state inviate.\n".
+	"Se stai tenendo d'occhio l'invio delle mail da Aleph, dovresti ricevere questo messaggio tutte le mattine,\n" . 
+        "in corrispondenza con l'esecuzione delle procedure di invio dei solleciti di scadenza prestiti e degli avvisi di ritardo.\n".
+        "Ti preghiamo di scrivere a sos.aleph\@unimib.it qualora non dovessi ricevere questo messaggio con cadenza regolare, in quanto\n".
+        "significherebbe che potrebbero esserci stati dei problemi con l'invio delle mail.\n\n".
+        "Nome del file della procedura: $myfile\n\n".
+	"Inviate $to_email_file email\n\n".
+        "N. di mail NON inviate e da stampare a mano:$to_print_file\n\n".
+        "N. di mail in coda che provero' ad inviare successivamente:$to_drop_file\n\n";
+      # $email_body = "This message is to inform you that batch emails from Aleph have been sent.\n\n".
+#	   "If you are monitoring circulation emails, you should see this message every morning for courtesy, overdue, and lost notices.  Recall letters are sent 3 times each day, but sometimes there are no recalls.\n\n".
+#	   "If you are monitoring acquisitions emails, you should see this message Monday through Friday mornings only.\n\n".
+#	   "Contact Christine if you ever do not receive this message on schedule, as there could be a problem.\n\n".
+#	   "Processed file: $myfile\n\n".
+#	   "Sent $to_email_file email message(s)\n\n".
+#	   "Sent $to_print_file messages to printout file\n\n".
+#	   "Sent $to_drop_file messages to retry file\n\n";
        $my_message = MIME::Lite->new(
-		From            => $admin_address,
+		From            => $FROM_ADDRESS,
                 To              => $admin_address,
-		Subject         => "$0 processing log.",
+		Subject         => "[Report invio mail Aleph] $0",
                 Datestamp       => 'false',
                 Date            => $maildate,
 		Data		=> $email_body,
@@ -344,6 +366,7 @@ sub send_message
 	# Check for SMTP Relay setting.
 	if (defined $smtp_relay){
 		MIME::Lite->send('smtp', $smtp_relay, Timeout=>60);
+		#MIME::Lite->send('smtp', $smtp_relay, Timeout=>60,Auth=>'LOGIN',AuthUser=>$from,AuthPass=>$pass,Port => 587, Debug => 1);
 	}
 	# Build email message.
 	$my_message = MIME::Lite->new(

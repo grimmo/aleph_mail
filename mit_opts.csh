@@ -48,5 +48,5 @@ endif
 
 echo "Remaining args: $argv"
 
-source /home/barton/mit_env.csh
+source mit_env.csh
 
